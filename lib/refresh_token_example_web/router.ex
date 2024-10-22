@@ -14,6 +14,7 @@ defmodule RefreshTokenExampleWeb.Router do
 
     post "/users", UserController, :create
     post "/sessions", SessionController, :create
+    post "/sessions/refresh", SessionController, :refresh
   end
 
   scope "/api", RefreshTokenExampleWeb do
