@@ -5,8 +5,21 @@ defmodule RefreshTokenExampleWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :auth do
+    plug RefreshTokenExampleWeb.Guardian.AuthPipeline
+  end
+
   scope "/api", RefreshTokenExampleWeb do
     pipe_through :api
+
+    post "/users", UserController, :create
+    post "/sessions", SessionController, :create
+  end
+
+  scope "/api", RefreshTokenExampleWeb do
+    pipe_through [:api, :auth]
+
+    get "/protected_resources", ProtectedResourceController, :index
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

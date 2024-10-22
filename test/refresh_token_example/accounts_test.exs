@@ -8,24 +8,33 @@ defmodule RefreshTokenExample.AccountsTest do
 
     import RefreshTokenExample.AccountsFixtures
 
-    @invalid_attrs %{email: nil, password_hash: nil}
+    @invalid_attrs %{password: nil, email: nil}
 
     test "list_users/0 returns all users" do
       user = user_fixture()
-      assert Accounts.list_users() == [user]
+      [listed_user] = Accounts.list_users()
+      assert listed_user.id == user.id
+      assert listed_user.email == user.email
+      assert listed_user.password_hash == user.password_hash
+      assert listed_user.password == nil
     end
 
     test "get_user!/1 returns the user with given id" do
       user = user_fixture()
-      assert Accounts.get_user!(user.id) == user
+      fetched_user = Accounts.get_user!(user.id)
+      assert fetched_user.id == user.id
+      assert fetched_user.email == user.email
+      assert fetched_user.password_hash == user.password_hash
+      assert fetched_user.password == nil
     end
 
     test "create_user/1 with valid data creates a user" do
-      valid_attrs = %{email: "some email", password_hash: "some password_hash"}
+      valid_attrs = %{email: "test@example.com", password: "password123"}
 
       assert {:ok, %User{} = user} = Accounts.create_user(valid_attrs)
-      assert user.email == "some email"
-      assert user.password_hash == "some password_hash"
+      assert user.email == "test@example.com"
+      assert user.password == nil
+      assert Bcrypt.verify_pass("password123", user.password_hash)
     end
 
     test "create_user/1 with invalid data returns error changeset" do
@@ -34,17 +43,21 @@ defmodule RefreshTokenExample.AccountsTest do
 
     test "update_user/2 with valid data updates the user" do
       user = user_fixture()
-      update_attrs = %{email: "some updated email", password_hash: "some updated password_hash"}
+      update_attrs = %{email: "updated@example.com", password: "newpassword123"}
 
-      assert {:ok, %User{} = user} = Accounts.update_user(user, update_attrs)
-      assert user.email == "some updated email"
-      assert user.password_hash == "some updated password_hash"
+      assert {:ok, %User{} = updated_user} = Accounts.update_user(user, update_attrs)
+      assert updated_user.email == "updated@example.com"
+      assert updated_user.password == nil
+      assert Bcrypt.verify_pass("newpassword123", updated_user.password_hash)
     end
 
     test "update_user/2 with invalid data returns error changeset" do
       user = user_fixture()
       assert {:error, %Ecto.Changeset{}} = Accounts.update_user(user, @invalid_attrs)
-      assert user == Accounts.get_user!(user.id)
+      fetched_user = Accounts.get_user!(user.id)
+      assert user.email == fetched_user.email
+      assert user.password_hash == fetched_user.password_hash
+      assert fetched_user.password == nil
     end
 
     test "delete_user/1 deletes the user" do

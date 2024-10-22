@@ -4,6 +4,12 @@ defmodule RefreshTokenExample.AccountsFixtures do
   entities via the `RefreshTokenExample.Accounts` context.
   """
 
+
+  @doc """
+  Generate a unique user email.
+  """
+  def unique_user_email, do: "user-#{System.unique_integer([:positive])}@example.com"
+
   @doc """
   Generate a user.
   """
@@ -11,8 +17,8 @@ defmodule RefreshTokenExample.AccountsFixtures do
     {:ok, user} =
       attrs
       |> Enum.into(%{
-        email: "some email",
-        password_hash: "some password_hash"
+        email: unique_user_email(),
+        password: "password123"
       })
       |> RefreshTokenExample.Accounts.create_user()
 
