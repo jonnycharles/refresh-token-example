@@ -24,11 +24,6 @@ defmodule RefreshTokenExampleWeb.AuthenticationTest do
                "refresh_token" => refresh_token
              } = response
 
-      # If there's an error, print it for debugging
-      if Map.has_key?(response, "error") do
-        IO.puts("Login Error: #{response["error"]}")
-      end
-
       # 3. Verify both tokens
       {:ok, access_claims} = Guardian.decode_and_verify(access_token)
       assert access_claims["sub"] == user_id
@@ -71,16 +66,14 @@ defmodule RefreshTokenExampleWeb.AuthenticationTest do
 
     test "refresh token fails with invalid token", %{conn: conn} do
       conn = post(conn, ~p"/api/sessions/refresh", refresh_token: "invalid_token")
-      assert json_response(conn, 401)["error"] == "Failed to refresh token: invalid_token"
+      assert json_response(conn, 401)["error"] == "invalid_refresh_token"
     end
 
     test "refresh token fails with access token", %{conn: conn} do
-      # First create a user and get tokens
       user_params = %{email: "test@example.com", password: "password123"}
       {:ok, user} = Accounts.create_user(user_params)
       {:ok, %{access_token: access_token}} = Guardian.create_tokens(user)
 
-      # Try to use access token as refresh token
       conn = post(conn, ~p"/api/sessions/refresh", refresh_token: access_token)
       assert json_response(conn, 401)["error"] == "invalid_refresh_token"
     end
@@ -95,8 +88,7 @@ defmodule RefreshTokenExampleWeb.AuthenticationTest do
       assert json_response(conn, 401)["error"] == "unauthenticated"
     end
 
-    test "accessing protected resource fails with expired access token", %{conn: conn} do
-      # Create a user and generate a token that expires immediately
+    test "accessing protected resource fails with expired access token", %{conn: _conn} do
       user_params = %{email: "test@example.com", password: "password123"}
       {:ok, user} = Accounts.create_user(user_params)
       {:ok, token, _claims} = Guardian.encode_and_sign(user, %{}, token_type: "access", ttl: {0, :second})
@@ -113,18 +105,15 @@ defmodule RefreshTokenExampleWeb.AuthenticationTest do
       assert json_response(conn, 401)["error"] == "invalid_token"
     end
 
-    test "refresh token can be used multiple times", %{conn: conn} do
-      # Create user and get tokens
+    test "refresh token can be used multiple times", %{conn: _conn} do
       user_params = %{email: "test@example.com", password: "password123"}
       {:ok, user} = Accounts.create_user(user_params)
       {:ok, %{refresh_token: refresh_token}} = Guardian.create_tokens(user)
 
-      # Use refresh token multiple times
       for _i <- 1..3 do
         conn = post(build_conn(), ~p"/api/sessions/refresh", refresh_token: refresh_token)
         assert %{"access_token" => new_access_token} = json_response(conn, 200)
 
-        # Verify the new access token works
         conn =
           build_conn()
           |> put_req_header("accept", "application/json")
@@ -133,6 +122,89 @@ defmodule RefreshTokenExampleWeb.AuthenticationTest do
 
         assert json_response(conn, 200)["message"] == "This is a protected resource"
       end
+    end
+  end
+
+  describe "token revocation" do
+    setup %{conn: conn} do
+      user_params = %{email: "test@example.com", password: "password123"}
+      {:ok, user} = Accounts.create_user(user_params)
+      {:ok, %{access_token: access_token, refresh_token: refresh_token}} = Guardian.create_tokens(user)
+
+      {:ok, %{
+        conn: conn,
+        user: user,
+        access_token: access_token,
+        refresh_token: refresh_token
+      }}
+    end
+
+    test "successfully revokes all tokens", %{conn: conn, user: user, access_token: access_token} do
+      # Create another token pair for the same user
+      {:ok, %{access_token: second_access_token}} = Guardian.create_tokens(user)
+
+      # Revoke all tokens
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> delete(~p"/api/sessions/logout_all")
+
+      assert json_response(conn, 200)["message"] == "Logged out from all devices"
+
+      # Verify first access token doesn't work
+      conn =
+        build_conn()
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> get(~p"/api/protected_resources")
+
+      assert json_response(conn, 401)["error"] == "invalid_token"
+
+      # Verify second access token doesn't work
+      conn =
+        build_conn()
+        |> put_req_header("authorization", "Bearer #{second_access_token}")
+        |> get(~p"/api/protected_resources")
+
+      assert json_response(conn, 401)["error"] == "invalid_token"
+    end
+
+    test "new tokens work after revoking all tokens", %{conn: conn, user: user, access_token: access_token} do
+      # Revoke all tokens
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> delete(~p"/api/sessions/logout_all")
+
+      assert json_response(conn, 200)["message"] == "Logged out from all devices"
+
+      # Create new tokens
+      {:ok, %{access_token: new_access_token}} = Guardian.create_tokens(user)
+
+      # Verify new token works
+      conn =
+        build_conn()
+        |> put_req_header("authorization", "Bearer #{new_access_token}")
+        |> get(~p"/api/protected_resources")
+
+      assert json_response(conn, 200)["message"] == "This is a protected resource"
+    end
+
+    test "refresh token stops working after token revocation", %{
+      conn: conn,
+      access_token: access_token,
+      refresh_token: refresh_token
+    } do
+      # Revoke all tokens
+      conn =
+        conn
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> delete(~p"/api/sessions/logout_all")
+
+      assert json_response(conn, 200)["message"] == "Logged out from all devices"
+
+      # Try to use the refresh token
+      conn = post(build_conn(), ~p"/api/sessions/refresh", refresh_token: refresh_token)
+      assert json_response(conn, 401)["error"] == "invalid_refresh_token"
     end
   end
 end

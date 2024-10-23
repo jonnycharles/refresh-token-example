@@ -4,7 +4,7 @@ defmodule RefreshTokenExampleWeb.Guardian.AuthPipeline do
     module: RefreshTokenExample.Guardian,
     error_handler: RefreshTokenExampleWeb.Guardian.AuthErrorHandler
 
-  plug Guardian.Plug.VerifyHeader, scheme: "Bearer"
+  plug Guardian.Plug.VerifyHeader, realm: "Bearer"
   plug Guardian.Plug.EnsureAuthenticated
   plug Guardian.Plug.LoadResource
 end

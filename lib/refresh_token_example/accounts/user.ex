@@ -34,4 +34,5 @@ defmodule RefreshTokenExample.Accounts.User do
         put_change(changeset, :password_hash, Bcrypt.hash_pwd_salt(password))
     end
   end
+
 end

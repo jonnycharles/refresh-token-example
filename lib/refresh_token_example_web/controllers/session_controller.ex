@@ -2,6 +2,7 @@ defmodule RefreshTokenExampleWeb.SessionController do
   use RefreshTokenExampleWeb, :controller
   alias RefreshTokenExample.Accounts
   alias RefreshTokenExample.Guardian
+  import Ecto.Query
 
   def create(conn, %{"email" => email, "password" => password}) do
     case Accounts.authenticate_user(email, password) do
@@ -32,14 +33,30 @@ defmodule RefreshTokenExampleWeb.SessionController do
         conn
         |> put_status(:ok)
         |> json(%{access_token: access_token})
-      {:error, :invalid_refresh_token} ->
+      {:error, _reason} ->
         conn
         |> put_status(:unauthorized)
         |> json(%{error: "invalid_refresh_token"})
-      {:error, reason} ->
-        conn
-        |> put_status(:unauthorized)
-        |> json(%{error: "Failed to refresh token: #{reason}"})
+    end
+  end
+
+  @spec delete_all(any(), any()) :: none()
+  def delete_all(conn, _params) do
+    claims = Guardian.Plug.current_claims(conn)
+
+    if claims do
+      RefreshTokenExample.Repo.all(
+        from(t in RefreshTokenExample.Token, where: fragment("claims ->> 'sub' = ?", ^claims["sub"]))
+      )
+      |> Enum.each(&Guardian.revoke(&1.jwt))
+
+      conn
+      |> put_status(:ok)
+      |> json(%{message: "Logged out from all devices"})
+    else
+      conn
+      |> put_status(:unauthorized)
+      |> json(%{error: "invalid_token"})
     end
   end
 end

@@ -10,6 +10,7 @@ defmodule RefreshTokenExample.Application do
     children = [
       RefreshTokenExampleWeb.Telemetry,
       RefreshTokenExample.Repo,
+      Guardian.DB.Token.SweeperServer,
       {DNSCluster, query: Application.get_env(:refresh_token_example, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: RefreshTokenExample.PubSub},
       # Start the Finch HTTP client for sending emails

@@ -47,6 +47,7 @@ defmodule RefreshTokenExample.MixProject do
       {:bandit, "~> 1.5"},
       {:bcrypt_elixir, "~> 3.0"},
       {:guardian, "~> 2.0"},
+      {:guardian_db, "~> 2.1"},
       {:dotenv, "~> 3.0.0", only: [:dev, :test]}
     ]
   end
@@ -62,7 +63,7 @@ defmodule RefreshTokenExample.MixProject do
       setup: ["deps.get", "ecto.setup"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"]
+      test: ["ecto.reset --quiet", "ecto.create --quiet", "ecto.migrate --quiet", "test"]
     ]
   end
 end

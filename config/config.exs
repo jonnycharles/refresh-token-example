@@ -43,6 +43,12 @@ config :refresh_token_example, RefreshTokenExample.Guardian,
   issuer: "refresh_token_example",
   secret_key: {System, :get_env, ["GUARDIAN_SECRET_KEY"]}
 
+config :guardian, Guardian.DB,
+  repo: RefreshTokenExample.Repo,
+  schema_name: "guardian_tokens",
+  sweep_interval: 60,  # in minutes
+  token_types: ["access", "refresh"]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
