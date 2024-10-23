@@ -1,5 +1,9 @@
 # RefreshTokenExample
 
+In order to start the application make sure in to set up a .env file in the root folder.
+
+In the .env file make sure to add `GUARDIAN_SECRET_KEY=` and add the key after that you generated using one of Phoenix's generators.
+
 To start your Phoenix server:
 
   * Run `mix setup` to install and setup dependencies
